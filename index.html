@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Easy English - تعلم الإنجليزية بسهولة</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
+    <link rel="stylesheet" href="style.css?v=3.0">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Tajawal:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <h1>Easy English</h1>
+            </div>
+            <nav>
+                <button class="nav-btn active" data-section="home">
+                    <i class="fa-solid fa-house"></i> <span>الرئيسية</span>
+                </button>
+                <button class="nav-btn" data-section="phonics">
+                    <i class="fa-solid fa-music"></i> <span>الصوتيات (Phonics)</span>
+                </button>
+                <button class="nav-btn" data-section="vocabulary">
+                    <i class="fa-solid fa-shapes"></i> <span>الكلمات (Vocabulary)</span>
+                </button>
+                <button class="nav-btn" data-section="grammar">
+                    <i class="fa-solid fa-book"></i> <span>القواعد (Grammar)</span>
+                </button>
+                <button class="nav-btn" data-section="numbers">
+                    <i class="fa-solid fa-arrow-up-1-9"></i> <span>الأرقام (Numbers)</span>
+                </button>
+                <button class="nav-btn" data-section="quiz">
+                    <i class="fa-solid fa-question-circle"></i> <span>اختبار (Quiz)</span>
+                </button>
+            </nav>
+            <div class="footer-info">
+                Mr. Emad Mohamed
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header>
+                <button id="menu-toggle"><i class="fa-solid fa-bars"></i></button>
+                <h2 id="page-title">مرحباً بك في عالم الإنجليزية!</h2>
+            </header>
+
+            <div id="content-area" class="content-area">
+                <!-- Dynamic Content Will Be Loaded Here -->
+                <div class="welcome-screen">
+                    <div class="welcome-card">
+                        <i class="fa-solid fa-star bounce"></i>
+                        <h3>ابدأ رحلة التعلم</h3>
+                        <p>اختر قسماً من القائمة الجانبية للبدء.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="quote-footer">
+        الحلم الكبير يبدأ بخطوة صغيرة
+    </div>
+
+    <!-- Confetti Canvas -->
+    <canvas id="confetti-canvas"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;"></canvas>
+
+    <script src="data.js?v=3.0"></script>
+    <script src="app.js?v=3.0"></script>
+
+</body>
+
+</html>
