@@ -801,18 +801,6 @@ margin-bottom: 10px;
         font-size: 1.4rem;
     }
 
-    .word-ar {
-        font-size: 1.2rem;
-    }
-
-    .quiz-options {
-        grid-template-columns: 1fr;
-    }
-
-    .quiz-container {
-        padding: 15px;
-    }
-
     .quiz-question {
         font-size: 1.5rem;
     }
