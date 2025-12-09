@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const GEMINI_API_KEY = 'AIzaSyCCRjf5aeBdPd6tmuezyMqc-P0BMbthhVw';
     const contentArea = document.getElementById('content-area');
     const pageTitle = document.getElementById('page-title');
     const navBtns = document.querySelectorAll('.nav-btn');
@@ -7,41 +8,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const confettiCanvas = document.getElementById('confetti-canvas');
 
     // --- AUDIO SYSTEM (Web Audio API) ---
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let audioCtx;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+        console.warn("Web Audio API not supported");
+    }
 
     function playSound(type) {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        osc.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
+        if (!audioCtx) return;
+        try {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
 
-        if (type === 'correct') {
-            // Success sound (High pitch major chord arpeggio)
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
-            osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
-            osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.4);
-        } else if (type === 'wrong') {
-            // Error sound (Low pitch buzz)
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.3);
-        } else if (type === 'click') {
-            // Click sound (Short blip)
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
+            if (type === 'correct') {
+                // Success sound (High pitch major chord arpeggio)
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+                osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+            } else if (type === 'wrong') {
+                // Error sound (Low pitch buzz)
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'click') {
+                // Click sound (Short blip)
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            }
+        } catch (err) {
+            console.error("Audio Error:", err);
         }
     }
 
@@ -138,18 +149,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const section = btn.dataset.section;
             loadSection(section);
 
-            if (window.innerWidth <= 768) {
+            if (window.innerWidth <= 1024) {
                 sidebar.classList.remove('active');
             }
         });
     });
 
-    menuToggle.addEventListener('click', () => {
+    const toggleMenu = (e) => {
+        e.stopPropagation();
+        e.preventDefault(); // Prevent ghost clicks
         playSound('click');
-        if (window.innerWidth <= 768) {
+        if (window.innerWidth <= 1024) {
             sidebar.classList.toggle('active');
         } else {
             sidebar.classList.toggle('collapsed');
+        }
+    };
+
+    menuToggle.addEventListener('click', toggleMenu);
+    menuToggle.addEventListener('touchstart', toggleMenu, { passive: false });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 1024 &&
+            sidebar.classList.contains('active') &&
+            !sidebar.contains(e.target) &&
+            e.target !== menuToggle) {
+            sidebar.classList.remove('active');
         }
     });
 
@@ -186,7 +212,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'quiz':
                 pageTitle.textContent = 'اختبر معلوماتك';
-                startQuiz();
+                renderQuizLevelSelection();
+                break;
+            case 'ai-tutor':
+                pageTitle.textContent = 'المعلم الذكي (AI Tutor)';
+                renderAITutor();
                 break;
         }
     }
@@ -328,14 +358,64 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- QUIZ LOGIC ---
 
-    function startQuiz() {
+    function renderQuizLevelSelection() {
+        contentArea.innerHTML = `
+            <div class="welcome-screen">
+                <div class="welcome-card">
+                    <i class="fa-solid fa-layer-group bounce" style="color:var(--secondary-color)"></i>
+                    <h3>اختر مستوى الامتحان</h3>
+                    <p>حدد الصعوبة المناسبة لك للبدء</p>
+                    
+                    <div class="grid-container" style="grid-template-columns: 1fr; gap: 15px; margin-top: 20px;">
+                        <button class="nav-btn" onclick="startQuiz('easy')" style="justify-content: center; background: #00b894; color: white;">
+                            <i class="fa-solid fa-star"></i> سهل (3-4 حروف)
+                        </button>
+                        <button class="nav-btn" onclick="startQuiz('medium')" style="justify-content: center; background: #fdcb6e; color: black;">
+                            <i class="fa-solid fa-star-half-stroke"></i> متوسط (5-6 حروف)
+                        </button>
+                        <button class="nav-btn" onclick="startQuiz('hard')" style="justify-content: center; background: #ff7675; color: white;">
+                            <i class="fa-solid fa-fire"></i> صعب (7-10 حروف)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        window.startQuiz = startQuiz;
+    }
+
+    function startQuiz(level = 'easy') {
         let allWords = [];
         appData.vocabulary.forEach(cat => allWords.push(...cat.words));
         appData.phonics.forEach(cat => allWords.push(...cat.words));
 
+        // Filter based on level
+        let filteredWords = allWords.filter(item => {
+            const word = item.word || item.english;
+            const len = word.replace(/[^a-zA-Z]/g, '').length; // Count only letters
+
+            if (level === 'easy') return len <= 4;
+            if (level === 'medium') return len >= 5 && len <= 6;
+            if (level === 'hard') return len >= 7;
+            return true;
+        });
+
+        // Fallback if not enough words
+        if (filteredWords.length < 10) {
+            // If hard level has few words, mix with medium
+            if (level === 'hard') {
+                const mediumWords = allWords.filter(item => {
+                    const len = (item.word || item.english).replace(/[^a-zA-Z]/g, '').length;
+                    return len >= 5;
+                });
+                filteredWords = mediumWords;
+            } else {
+                filteredWords = allWords; // Fallback to all
+            }
+        }
+
         // Shuffle and pick 10 unique words
-        allWords.sort(() => Math.random() - 0.5);
-        const selectedWords = allWords.slice(0, 10);
+        filteredWords.sort(() => Math.random() - 0.5);
+        const selectedWords = filteredWords.slice(0, 10);
 
         quizState.questions = [];
         selectedWords.forEach(wordObj => {
@@ -505,6 +585,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i class="fa-solid fa-trophy bounce" style="color:gold"></i>
                     <h3>نتيجتك هي</h3>
                     <h1 style="font-size: 4rem; color:var(--primary-color); margin: 20px 0;">${score} / 10</h1>
+                    
+                    <div style="width: 250px; margin: 20px auto;">
+                        <canvas id="resultChart"></canvas>
+                    </div>
+
                     <div class="result-quote">
                         "الخطأ ليس نهاية ولكن بداية إنسان عظيم"
                     </div>
@@ -514,6 +599,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         `;
+
+        // Render Chart
+        setTimeout(() => {
+            const ctx = document.getElementById('resultChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['إجابات صحيحة', 'إجابات خاطئة'],
+                    datasets: [{
+                        data: [score, 10 - score],
+                        backgroundColor: ['#00b894', '#ff7675'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: { family: 'Tajawal' }
+                            }
+                        }
+                    }
+                }
+            });
+        }, 100);
+
         window.startQuiz = startQuiz;
     }
 
@@ -526,5 +639,140 @@ document.addEventListener('DOMContentLoaded', () => {
         utterance.rate = 0.7;
         utterance.pitch = 1.0;
         window.speechSynthesis.speak(utterance);
+    }
+
+    // --- AI TUTOR LOGIC ---
+    function renderAITutor() {
+        contentArea.innerHTML = `
+            <div class="chat-container">
+                <div class="chat-header">
+                    <i class="fa-solid fa-robot"></i>
+                    <span>المعلم الذكي</span>
+                </div>
+                <div class="chat-box" id="chat-box">
+                    <div class="chat-message ai">
+                        مرحباً! أنا معلمك الذكي للغة الإنجليزية. كيف يمكنني مساعدتك اليوم؟
+                        <br>
+                        Hello! I am your AI English Tutor. How can I help you today?
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" class="chat-input" placeholder="اكتب رسالتك هنا... (Type your message here)">
+                    <button id="chat-send-btn" class="chat-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
+        `;
+
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('chat-send-btn');
+        const chatBox = document.getElementById('chat-box');
+
+        function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Add User Message
+            appendMessage(message, 'user');
+            chatInput.value = '';
+
+            // Show Typing Indicator
+            const typingId = showTypingIndicator();
+
+            // Call API
+            sendToGemini(message).then(response => {
+                removeTypingIndicator(typingId);
+                appendMessage(response, 'ai');
+            }).catch(err => {
+                removeTypingIndicator(typingId);
+                appendMessage("عذراً، حدث خطأ في الاتصال. حاول مرة أخرى.", 'ai');
+                console.error(err);
+            });
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    }
+
+    function appendMessage(text, sender) {
+        const chatBox = document.getElementById('chat-box');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `chat-message ${sender}`;
+        // Convert newlines to breaks for AI response
+        msgDiv.innerHTML = text.replace(/\n/g, '<br>');
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function showTypingIndicator() {
+        const chatBox = document.getElementById('chat-box');
+        const id = 'typing-' + Date.now();
+        const div = document.createElement('div');
+        div.className = 'typing-indicator';
+        div.id = id;
+        div.innerHTML = `
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        `;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return id;
+    }
+
+    function removeTypingIndicator(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    }
+
+    async function sendToGemini(message) {
+        // Using user-specified model
+        let modelName = 'gemini-2.5-flash';
+        let url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+
+        const payload = {
+            contents: [{
+                parts: [{
+                    text: `You are a helpful, friendly English language tutor. User message: ${message}`
+                }]
+            }]
+        };
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                // If model not found, try to list available models to debug
+                if (data.error.code === 404) {
+                    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
+                    const listResp = await fetch(listUrl);
+                    const listData = await listResp.json();
+
+                    if (listData.models) {
+                        const availableModels = listData.models.map(m => m.name.replace('models/', '')).join('<br>');
+                        return `عذراً، الموديل ${modelName} غير متاح. <br> الموديلات المتاحة لمفتاحك هي:<br>${availableModels}<br><br>يرجى إخبار المطور بذلك.`;
+                    } else {
+                        return `Error 404: Model not found, and could not list models. ${data.error.message}`;
+                    }
+                }
+                return `Error: ${data.error.message}`;
+            }
+
+            if (data.candidates && data.candidates[0].content) {
+                return data.candidates[0].content.parts[0].text;
+            }
+            return "No response content.";
+
+        } catch (error) {
+            console.error("Gemini API Error:", error);
+            return `Connection Error: ${error.message}`;
+        }
     }
 });
